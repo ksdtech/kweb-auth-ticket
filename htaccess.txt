@@ -1,0 +1,13 @@
+AuthType KWebTicket
+AuthName KWeb
+PerlAuthenHandler KWebTicket->authenticate
+PerlAuthzHandler KWebTicket->authorize
+# See other PerlSetVar and Location directives in sites file
+Require valid-user
+Deny from all
+Allow from 10.2.0.0/16
+Allow from 10.3.0.0/16
+Allow from 10.4.0.0/16
+Allow from 172.16.121.0/24
+Order Deny,Allow
+Satisfy Any
