@@ -1,0 +1,9 @@
+Just one overridden method to do case-insensitive password
+comparisons.  Future work to include: better login screen,
+authorization levels for different groups, etc.
+
+Project also contains "sites" virtual host file for an
+OS X 10.5 Apache 2 webserver.
+
+Contact pzingg AT kentfieldschools FULLSTOP org for 
+info or suggestions.
