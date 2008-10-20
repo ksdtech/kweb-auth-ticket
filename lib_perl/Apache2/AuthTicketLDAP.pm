@@ -1,5 +1,5 @@
 #
-# $Id: AuthTicketLDAP.pm 40 2005-04-18 19:48:25Z mschout $
+# AuthTicketLDAP.pm - authenticate with LDAP server
 #
 
 package Apache2::AuthTicketLDAP;
@@ -356,8 +356,8 @@ sub check_credentials {
 	my ($ldap, $dn_or_errmsg) = $this->check_user($user);
 	return ($ldap, $dn_or_errmsg) unless $ldap;
 		
-    $password = lc($password) if $this->{TicketPasswordStyle} == 'lowercase';
-    $mesg = $ldap->bind($dn_or_errmsg, password => $password);
+    $password = lc($password) if $this->{TicketPasswordStyle} == 'nocase';
+    my $mesg = $ldap->bind($dn_or_errmsg, password => $password);
 
     $ldap->unbind;
     
