@@ -1,0 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<title>Log In</title>
+</head>
+<body bgcolor="#ffffff" onload="document.forms[0].credential_0.focus();">
+<h1>Protected Page: Please Log In</h1>
+[% IF reason %]
+<p style="color: red;">[% reason %]</p>
+[% ENDIF %]
+<p>Please enter your user name and password and click <em>Log In</em> to log in.</p>
+[% IF resetpw %]
+<p>To have the password for this account reset, and the new password
+  mailed to the email address registered with the account, enter your user
+  name and click <em>Reset Password</em>.</p>
+[% ENDIF ]
+<form method="post" action="[% action %]">
+<input type="hidden" name="destination" value="[% destination %]">
+<p>User Name<br />
+<input type="text" name="credential_0" size="20" maxlength="30" value="[% cred_0 %]"></p>
+<p>Password<br />
+<input type="password" name="credential_1" size="20" maxlength="30"></p>
+<p><input type="submit" name="login" value="Log In">
+[% IF resetpw %]
+or <input type="submit" name="resetpw" value="Reset Password">
+[% ENDIF %]
+</p>
+</form>
+<p><em>Note:</em>
+Set your browser to accept cookies in order for login to succeed.
+You will be asked to log in again after some period of time.</p>
+</body>
+</html>
