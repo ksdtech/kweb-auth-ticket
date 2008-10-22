@@ -17,7 +17,7 @@ use SQL::Abstract;
 use Digest::MD5 qw(md5_hex);
 use Net::LDAP;
 
-use constant DEBUGGING => 0;
+use constant DEBUGGING => 1;
 
 our $VERSION = '0.40';
 
@@ -262,13 +262,9 @@ sub dbi_connect {
     my ($this) = @_;
     $this->_log_entry if DEBUGGING;
 
-    my $r         = $this->request;
-    my $auth_name = $r->auth_name;
-
-    my ($db, $user, $pass) = map {
-        $this->_get_config_item($r, $_)
-    } qw/TicketDB TicketDBUser TicketDBPassword/;
-
+    my $db   = $this->{TicketDB};
+    my $user = $this->{TicketDBUser};
+    my $pass = $this->{TicketDBPassword};
     my $dbh = DBI->connect_cached($db, $user, $pass)
         or die "DBI Connect failure: ", DBI->errstr, "\n";
 
@@ -276,20 +272,25 @@ sub dbi_connect {
 }
 
 sub _ldap_bind_as_root {
-	my ($this) = @_;
-	
-    my $ldap = Net::LDAP->new($this->{LdapServer},
-        port    => $this->{LdapPort},
-        version => $this->{LdapVersion},
-        timeout => $this->{LdapTimeout},
+    my ($this) = @_;
+    
+    my $server  = $this->{LdapServer};
+    my $port    = $this->{LdapPort};
+    my $version = $this->{LdapVersion};
+    my $timeout = $this->{LdapTimeout};
+    my $ldap = Net::LDAP->new($server,
+        port    => $port,
+        version => $version,
+        timeout => $timeout,
         debug   => 0);
           
-    return (undef, "can't connect to LDAP server: $@") unless $ldap;
+    return (undef, "can't connect to LDAP v$version server '$server:$port': $@") unless $ldap;
 
     my $mesg;
-    
-    if (defined($this->{LdapCaFile})) {
-        $mesg = $ldap->start_tls(verify => 'require', cafile => $this->{LdapCaFile});
+
+    my $ca_file = $this->{LdapCaFile};
+    if (defined($ca_file)) {
+        $mesg = $ldap->start_tls(verify => 'require', cafile => $ca_file);
         return (undef, "can't start LDAPS connection: " . $mesg->error_text) if $mesg->code;
     }
     
@@ -303,11 +304,11 @@ sub _ldap_bind_as_root {
     
     if ($mesg->code) {
         my $bind = $binddn ? "with dn '$binddn' and pw '$bindpw'" : "anonymously";
-    	$ldap->unbind;
+        $ldap->unbind;
         return (undef, "failed to bind $bind: " . $mesg->error_text);
     }
 
-	return ($ldap, undef);	
+    return ($ldap, undef);  
 }
 
 # boolean check_user(String username)
@@ -317,14 +318,16 @@ sub check_user {
     my ($this, $user) = @_;
     $this->_log_entry if DEBUGGING;
 
-	my ($ldap, $errmsg) = $this->_ldap_bind_as_root();
-	return ($ldap, $errmsg) unless $ldap;
-		
-    my $basedn  = $this->{LdapUserBaseDn};
-    my $filter = sprintf($this->{LdapUserFilter}, ($user) x 10);    
+    my ($ldap, $errmsg) = $this->_ldap_bind_as_root();
+    return ($ldap, $errmsg) unless $ldap;
+        
+    my $basedn        = $this->{LdapUserBaseDn};
+    my $filter_format = $this->{LdapUserFilter};
+    my $scope         = $this->{LdapScope};
+    my $filter = sprintf($filter_format, ($user) x 10);    
     my $mesg = $ldap->search(
         base   => $basedn,
-        scope  => $this->{LdapScope},
+        scope  => $scope,
         filter => $filter,
         attrs  => ['1.1']); # 1.1 means return no attributes
 
@@ -345,6 +348,8 @@ sub check_user {
     
     my $entry = $mesg->entry(0);
     my $dn = $entry->dn;
+    $this->request->log_error("check_user got user, dn: $dn") if DEBUGGING;
+
     return ($ldap, $dn);
 }
 
@@ -353,9 +358,12 @@ sub check_credentials {
     my ($this, $user, $password) = @_;
     $this->_log_entry if DEBUGGING;
 
-	my ($ldap, $dn_or_errmsg) = $this->check_user($user);
-	return ($ldap, $dn_or_errmsg) unless $ldap;
-		
+    my ($ldap, $dn_or_errmsg) = $this->check_user($user);
+    unless ($ldap) {
+    $this->request->log_error("check_user failed: ${dn_or_errmsg}") if DEBUGGING;
+    return ($ldap, $dn_or_errmsg);
+    }
+        
     $password = lc($password) if $this->{TicketPasswordStyle} == 'nocase';
     my $mesg = $ldap->bind($dn_or_errmsg, password => $password);
 
